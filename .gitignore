@@ -1,0 +1,65 @@
+# NSS files
+cert9.db
+pkcs11.txt
+key4.db
+config.log
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+
+# Build files
+build
+.sconf_temp
+.sconsign.dblite
+
+# Sconf log
+config.log
+
+# vi swap files
+.*.swp
+
+# Data files
+*.dat
+*.raw
+*.tiff
+
+# python files
+python/libprio
+*.egg-info/
+.pytest_cache/
+__pycache__/
+*.pyc
+MANIFEST
+venv/
+.tox/
+dist/

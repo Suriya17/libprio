@@ -1,0 +1,37 @@
+import sys
+
+Import('env')
+
+prio_env = env.Clone()
+
+src0 = [
+    "server0.c",
+    "utils.c",
+]
+
+src1 = [
+    "server1.c",
+    "utils.c",
+]
+
+src0_uint = [
+    "server0_uint.c",
+    "utils.c",
+]
+
+src1_uint = [
+    "server1_uint.c",
+    "utils.c",
+]
+
+libs = [
+  "mprio",
+  "msgpackc",
+]
+
+prio_env.Append(LIBS = libs)
+prio_env.Program("server0", src0)
+prio_env.Program("server1", src1)
+prio_env.Program("server0_uint", src0_uint)
+prio_env.Program("server1_uint", src1_uint)
+

@@ -1,0 +1,32 @@
+language: c
+
+os:
+  - linux
+  - freebsd
+  - osx
+
+dist: bionic
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      ./scripts/clang-format.sh;
+    elif [[ "$TRAVIS_OS_NAME" = "freebsd" ]]; then
+      sudo pkg install -y msgpack nss;
+      sudo pkg install -yx \^scons-py3;
+    elif [[ "$TRAVIS_OS_NAME" = "osx" ]]; then
+      brew update;
+      brew upgrade nspr nss msgpack;
+      brew install scons;
+    fi
+
+addons:
+  apt:
+    packages:
+    - scons
+    - libmsgpack-dev
+    - libnss3-dev
+    - clang-format-9
+
+script:
+  - scons DEBUG=1 SANITIZE=1
+  - ./build/ptest/ptest -vvv
