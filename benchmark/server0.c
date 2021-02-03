@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "util.h"
 #include "utils.h"
@@ -97,8 +98,11 @@ verify_full(int nclients)
   P_CHECKA(p2A = PrioPacketVerify2_new());
   P_CHECKA(p2B = PrioPacketVerify2_new());
 
-  clock_t main_start = clock();
-  clock_t encode_time = 0;
+  struct timespec main_start, main_end;
+  struct timespec start, end;
+  clock_gettime(CLOCK_MONOTONIC, &main_start);
+
+  double encode_time = 0;
   // Generate client data packets.
   for (int c = 0; c < nclients; c++) {
 
@@ -114,13 +118,14 @@ verify_full(int nclients)
     // Construct the client data packets.
     unsigned int aLen, bLen;
 
-    clock_t start = clock();
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     P_CHECKC(PrioClient_encode(
       cfg, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
+    clock_gettime(CLOCK_MONOTONIC, &end);
 
-    clock_t end = clock();
-    clock_t time_elapsed = end - start;
+    double time_elapsed = (end.tv_sec - start.tv_sec)*1e9;
+    time_elapsed = (time_elapsed + (end.tv_nsec - start.tv_nsec))*1e-9;
     encode_time += time_elapsed;
     //send for server_b to server1
 
@@ -205,13 +210,17 @@ verify_full(int nclients)
   // in the clear.
   P_CHECKC(PrioTotalShare_final(cfg, output, tA, tB));
 
-  clock_t main_end = clock();
-  clock_t time_taken = main_end - main_start - encode_time;
+  clock_gettime(CLOCK_MONOTONIC, &main_end);
+
+
+  double time_taken = (main_end.tv_sec - main_start.tv_sec)*1e9;
+  time_taken = (time_taken + (main_end.tv_nsec - main_start.tv_nsec))*1e-9;
+
 
   printf("Time to process : %12.4lf\n",
-          (double)time_taken / (double)CLOCKS_PER_SEC);
+          time_taken-encode_time);
   printf("Time to encode : %12.4lf\n",
-          (double)encode_time / (double)CLOCKS_PER_SEC);
+          encode_time);
 
   // Now the output[i] contains a counter that indicates how many clients
   // submitted TRUE for data value i.  We print out this data.
