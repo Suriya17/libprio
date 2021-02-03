@@ -29,7 +29,7 @@ void bind_and_listen(struct sockaddr_in *addr, int *sockfd, const int port, cons
 
     if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)))
         error_exit("Sockopt failed");
-    if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse)))
+    if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)))
         error_exit("Sockopt failed");
 
     bzero((char *) addr, sizeof(addr));
@@ -158,7 +158,7 @@ void server1_connect(int* sockfd, const int port, const int reuse ) {
 
     if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)))
         error_exit("Sockopt failed");
-    if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse)))
+    if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)))
         error_exit("Sockopt failed");
 
     struct sockaddr_in addr;
