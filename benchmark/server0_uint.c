@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "prio/util.h"
+#include "util.h"
 #include "utils.h"
 
 int
