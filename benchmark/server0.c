@@ -100,7 +100,7 @@ verify_full(int nclients)
 
   struct timespec main_start, main_end;
   struct timespec start, end;
-  clock_gettime(CLOCK_MONOTONIC, &main_start);
+  clock_gettime(CLOCK_REALTIME, &main_start);
 
   double encode_time = 0;
   // Generate client data packets.
@@ -118,11 +118,11 @@ verify_full(int nclients)
     // Construct the client data packets.
     unsigned int aLen, bLen;
 
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    clock_gettime(CLOCK_REALTIME, &start);
 
     P_CHECKC(PrioClient_encode(
       cfg, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
-    clock_gettime(CLOCK_MONOTONIC, &end);
+    clock_gettime(CLOCK_REALTIME, &end);
 
     double time_elapsed = (end.tv_sec - start.tv_sec)*1e9;
     time_elapsed = (time_elapsed + (end.tv_nsec - start.tv_nsec))*1e-9;
@@ -210,7 +210,7 @@ verify_full(int nclients)
   // in the clear.
   P_CHECKC(PrioTotalShare_final(cfg, output, tA, tB));
 
-  clock_gettime(CLOCK_MONOTONIC, &main_end);
+  clock_gettime(CLOCK_REALTIME, &main_end);
 
 
   double time_taken = (main_end.tv_sec - main_start.tv_sec)*1e9;
