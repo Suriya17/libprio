@@ -97,8 +97,8 @@ verify_full(int nclients)
   P_CHECKA(p2A = PrioPacketVerify2_new());
   P_CHECKA(p2B = PrioPacketVerify2_new());
 
-  long long main_start = clock();
-  long long encode_time = 0;
+  clock_t main_start = clock();
+  clock_t encode_time = 0;
   // Generate client data packets.
   for (int c = 0; c < nclients; c++) {
 
@@ -114,13 +114,13 @@ verify_full(int nclients)
     // Construct the client data packets.
     unsigned int aLen, bLen;
 
-    long long start = clock();
+    clock_t start = clock();
 
     P_CHECKC(PrioClient_encode(
       cfg, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
 
-    long long end = clock();
-    long long time_elapsed = end - start;
+    clock_t end = clock();
+    clock_t time_elapsed = end - start;
     encode_time += time_elapsed;
     //send for server_b to server1
 
@@ -205,8 +205,8 @@ verify_full(int nclients)
   // in the clear.
   P_CHECKC(PrioTotalShare_final(cfg, output, tA, tB));
 
-  long long main_end = clock();
-  long long time_taken = main_end - main_start - encode_time;
+  clock_t main_end = clock();
+  clock_t time_taken = main_end - main_start - encode_time;
 
   printf("Time to process : %12.4lf\n",
           (double)time_taken / (double)CLOCKS_PER_SEC);
