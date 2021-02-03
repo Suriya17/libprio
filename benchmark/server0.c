@@ -106,7 +106,7 @@ verify_full(int nclients)
     for (int i = 0; i < ndata; i++) {
       // Arbitrary data
       data_items[i] = (i % 3 == 1) || (c % 5 == 3);
-      printf("Input %d : %d \n", c, data_items[i]);
+      // printf("Input %d : %d \n", c, data_items[i]);
     }
 
     // I. CLIENT DATA SUBMISSION.
@@ -125,7 +125,7 @@ verify_full(int nclients)
     //send for server_b to server1
 
     send_packet_data(serverfd,for_server_b,bLen);
-    printf("Processing input %d\n", c);
+    // printf("Processing input %d\n", c);
 
     // The Prio servers A and B can come online later (e.g., at the end of
     // each day) to download the encrypted telemetry packets from the

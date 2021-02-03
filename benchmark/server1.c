@@ -110,7 +110,7 @@ verify_full(int nclients)
 
     recv_packet_data(serverfd,&for_server_b,&bLen);
 
-    printf("Processing input %d\n", c);
+    // printf("Processing input %d\n", c);
 
     // The Prio servers A and B can come online later (e.g., at the end of
     // each day) to download the encrypted telemetry packets from the
