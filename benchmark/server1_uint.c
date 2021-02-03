@@ -6,7 +6,7 @@
 #include "utils.h"
 
 int
-verify_full(void)
+verify_full(int prec, int nclients)
 {
   SECStatus rv = SECSuccess;
 
@@ -41,9 +41,7 @@ verify_full(void)
 
   // Number of different boolean data fields we collect.
   const int ndata = 1;
-  const int prec = 32;
-  // Number of clients to simulate.
-  const int nclients = 10;
+  
 
   P_CHECKA(output = calloc(ndata, sizeof(unsigned long long)));
   P_CHECKA(data_items = calloc(ndata, sizeof(bool)));
@@ -237,8 +235,13 @@ cleanup:
 }
 
 int
-main(void)
+main(int argc, char** argv)
 {
+  if(argc != 3)
+    return -1;
   puts("This utility demonstrates how to invoke the Prio API.");
-  return verify_full();
+  int prec = atoi(argv[1]);
+  // Number of clients to simulate.
+  int nclients = atoi(argv[2]);
+  return verify_full(prec, nclients);
 }

@@ -1,12 +1,13 @@
 #include <mprio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "prio/util.h"
 #include "utils.h"
 
 int
-verify_full(void)
+verify_full(int nclients)
 {
   SECStatus rv = SECSuccess;
 
@@ -43,7 +44,6 @@ verify_full(void)
   const int ndata = 1;
 
   // Number of clients to simulate.
-  const int nclients = 10;
 
   P_CHECKA(output = calloc(ndata, sizeof(unsigned long long)));
   P_CHECKA(data_items = calloc(ndata, sizeof(bool)));
@@ -97,7 +97,8 @@ verify_full(void)
   P_CHECKA(p2A = PrioPacketVerify2_new());
   P_CHECKA(p2B = PrioPacketVerify2_new());
 
-
+  long long main_start = clock();
+  long long encode_time = 0;
   // Generate client data packets.
   for (int c = 0; c < nclients; c++) {
 
@@ -112,9 +113,15 @@ verify_full(void)
     //
     // Construct the client data packets.
     unsigned int aLen, bLen;
+
+    long long start = clock();
+
     P_CHECKC(PrioClient_encode(
       cfg, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
 
+    long long end = clock();
+    long long time_elapsed = end - start;
+    encode_time += time_elapsed;
     //send for server_b to server1
 
     send_packet_data(serverfd,for_server_b,bLen);
@@ -198,6 +205,14 @@ verify_full(void)
   // in the clear.
   P_CHECKC(PrioTotalShare_final(cfg, output, tA, tB));
 
+  long long main_end = clock();
+  long long time_taken = main_end - main_start - encode_time;
+
+  printf("Time to process : %12.4lf\n",
+          (double)time_taken / (double)CLOCKS_PER_SEC);
+  printf("Time to encode : %12.4lf\n",
+          (double)encode_time / (double)CLOCKS_PER_SEC);
+
   // Now the output[i] contains a counter that indicates how many clients
   // submitted TRUE for data value i.  We print out this data.
   for (int i = 0; i < ndata; i++)
@@ -246,8 +261,11 @@ cleanup:
 }
 
 int
-main(void)
+main(int argc, char** argv)
 {
+  if(argc != 2)
+    return -1;
   puts("This utility demonstrates how to invoke the Prio API.");
-  return verify_full();
+  int nclients = atoi(argv[1]);
+  return verify_full(nclients);
 }

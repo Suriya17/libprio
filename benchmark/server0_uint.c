@@ -1,12 +1,13 @@
 #include <mprio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "prio/util.h"
 #include "utils.h"
 
 int
-verify_full(void)
+verify_full(int prec, int nclients)
 {
   SECStatus rv = SECSuccess;
 
@@ -41,10 +42,6 @@ verify_full(void)
 
   // Number of different boolean data fields we collect.
   const int ndata = 1;
-
-  const int prec = 32;
-  // Number of clients to simulate.
-  const int nclients = 10;
 
   P_CHECKA(output = calloc(ndata, sizeof(unsigned long long)));
   P_CHECKA(data_items = calloc(ndata, sizeof(long)));
@@ -100,13 +97,17 @@ verify_full(void)
 
   long max = (1l << (prec)) - 1;
 
+  long long main_start = clock();
+  long long encode_time = 0;
   // Generate client data packets.
   for (int c = 0; c < nclients; c++) {
 
     // The client's data submission is an arbitrary boolean vector.
     for (int i = 0; i < ndata; i++) {
       // Arbitrary data
-      data_items[i] = max - i;
+      data_items[i] = c;
+      if(c > max)
+        data_items[i] = max;
       printf("Input %d : %ld \n", c, data_items[i]);
     }
 
@@ -114,8 +115,15 @@ verify_full(void)
     //
     // Construct the client data packets.
     unsigned int aLen, bLen;
+
+    long long start = clock();
+
     P_CHECKC(PrioClient_encode_uint(
       cfg, prec, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
+
+    long long end = clock();
+    long long time_elapsed = end - start;
+    encode_time += time_elapsed;
 
     //send for server_b to server1
 
@@ -200,6 +208,14 @@ verify_full(void)
   // in the clear.
   P_CHECKC(PrioTotalShare_final_uint(cfg, prec, output, tA, tB));
 
+  long long main_end = clock();
+  long long time_taken = main_end - main_start - encode_time;
+
+  printf("Time to process : %12.4lf\n",
+          (double)time_taken / (double)CLOCKS_PER_SEC);
+  printf("Time to encode : %12.4lf\n",
+          (double)encode_time / (double)CLOCKS_PER_SEC);
+
   // Now the output[i] contains a counter that indicates how many clients
   // submitted TRUE for data value i.  We print out this data.
   for (int i = 0; i < ndata; i++)
@@ -248,8 +264,13 @@ cleanup:
 }
 
 int
-main(void)
+main(int argc, char** argv)
 {
+  if(argc != 3)
+    return -1;
   puts("This utility demonstrates how to invoke the Prio API.");
-  return verify_full();
+  int prec = atoi(argv[1]);
+  // Number of clients to simulate.
+  int nclients = atoi(argv[2]);
+  return verify_full(prec, nclients);
 }
