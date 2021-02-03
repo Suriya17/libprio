@@ -1,3 +1,10 @@
+# Benchmark instructions
+
+Install necessary tools and build code using scons as described below
+
+To benchmark bit sum and int sum, use build/server0, build/server1 files
+
+
 # libprio - A Prio library in C using NSS 
 
 # NOTE - this repository is being used for Firefox as part of a pilot experiment, this repository will be archived in favor of [the new Rust implementation, libprio-rs](https://github.com/abetterinternet/libprio-rs). Please direct contributions that are not related to the Firefox pilot to this new project.
