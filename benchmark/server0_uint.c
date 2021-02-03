@@ -112,7 +112,7 @@ verify_full(int prec, int nclients)
       data_items[i] = c;
       if(c > max)
         data_items[i] = max;
-      printf("Input %d : %ld \n", c, data_items[i]);
+      // printf("Input %d : %ld \n", c, data_items[i]);
     }
 
     // I. CLIENT DATA SUBMISSION.
