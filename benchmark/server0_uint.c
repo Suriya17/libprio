@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "util.h"
 #include "utils.h"
@@ -97,8 +98,11 @@ verify_full(int prec, int nclients)
 
   long max = (1l << (prec)) - 1;
 
-  long long main_start = clock();
-  long long encode_time = 0;
+  struct timeval main_start, main_end;
+  struct timeval start, end;
+  gettimeofday(&main_start, NULL);
+
+  double encode_time = 0;
   // Generate client data packets.
   for (int c = 0; c < nclients; c++) {
 
@@ -116,13 +120,15 @@ verify_full(int prec, int nclients)
     // Construct the client data packets.
     unsigned int aLen, bLen;
 
-    long long start = clock();
+    gettimeofday(&start, NULL);
 
     P_CHECKC(PrioClient_encode_uint(
       cfg, prec, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
 
-    long long end = clock();
-    long long time_elapsed = end - start;
+    gettimeofday(&end, NULL);
+
+    double time_elapsed = (end.tv_sec - start.tv_sec)*1e6;
+    time_elapsed = (time_elapsed + (end.tv_usec - start.tv_usec))*1e-6;
     encode_time += time_elapsed;
 
     //send for server_b to server1
@@ -208,13 +214,17 @@ verify_full(int prec, int nclients)
   // in the clear.
   P_CHECKC(PrioTotalShare_final_uint(cfg, prec, output, tA, tB));
 
-  long long main_end = clock();
-  long long time_taken = main_end - main_start - encode_time;
+  gettimeofday(&main_end, NULL);
+
+
+  double time_taken = (main_end.tv_sec - main_start.tv_sec)*1e6;
+  time_taken = (time_taken + (main_end.tv_usec - main_start.tv_usec))*1e-6;
+
 
   printf("Time to process : %12.4lf\n",
-          (double)time_taken / (double)CLOCKS_PER_SEC);
+          time_taken-encode_time);
   printf("Time to encode : %12.4lf\n",
-          (double)encode_time / (double)CLOCKS_PER_SEC);
+          encode_time);
 
   // Now the output[i] contains a counter that indicates how many clients
   // submitted TRUE for data value i.  We print out this data.
