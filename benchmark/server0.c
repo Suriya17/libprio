@@ -98,9 +98,9 @@ verify_full(int nclients)
   P_CHECKA(p2A = PrioPacketVerify2_new());
   P_CHECKA(p2B = PrioPacketVerify2_new());
 
-  struct timespec main_start, main_end;
-  struct timespec start, end;
-  clock_gettime(CLOCK_REALTIME, &main_start);
+  struct timeval main_start, main_end;
+  struct timeval start, end;
+  gettimeofday(&main_start, NULL);
 
   double encode_time = 0;
   // Generate client data packets.
@@ -118,14 +118,14 @@ verify_full(int nclients)
     // Construct the client data packets.
     unsigned int aLen, bLen;
 
-    clock_gettime(CLOCK_REALTIME, &start);
+    gettimeofday(&start, NULL);
 
     P_CHECKC(PrioClient_encode(
       cfg, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
-    clock_gettime(CLOCK_REALTIME, &end);
+    gettimeofday(&end, NULL);
 
-    double time_elapsed = (end.tv_sec - start.tv_sec)*1e9;
-    time_elapsed = (time_elapsed + (end.tv_nsec - start.tv_nsec))*1e-9;
+    double time_elapsed = (end.tv_sec - start.tv_sec)*1e6;
+    time_elapsed = (time_elapsed + (end.tv_usec - start.tv_usec))*1e-6;
     encode_time += time_elapsed;
     //send for server_b to server1
 
@@ -210,11 +210,11 @@ verify_full(int nclients)
   // in the clear.
   P_CHECKC(PrioTotalShare_final(cfg, output, tA, tB));
 
-  clock_gettime(CLOCK_REALTIME, &main_end);
+  gettimeofday(&main_end, NULL);
 
 
-  double time_taken = (main_end.tv_sec - main_start.tv_sec)*1e9;
-  time_taken = (time_taken + (main_end.tv_nsec - main_start.tv_nsec))*1e-9;
+  double time_taken = (main_end.tv_sec - main_start.tv_sec)*1e6;
+  time_taken = (time_taken + (main_end.tv_usec - main_start.tv_usec))*1e-6;
 
 
   printf("Time to process : %12.4lf\n",
