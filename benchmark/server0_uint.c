@@ -29,8 +29,8 @@ verify_full(int prec, int nclients)
   PrioTotalShare tA = NULL;
   PrioTotalShare tB = NULL;
 
-  unsigned char* for_server_a = NULL;
-  unsigned char* for_server_b = NULL;
+  unsigned char** for_server_a = NULL;
+  unsigned char** for_server_b = NULL;
 
   const unsigned char* batch_id = (unsigned char*)"prio_batch_2018-04-17";
   const unsigned int batch_id_len = strlen((char*)batch_id);
@@ -98,12 +98,21 @@ verify_full(int prec, int nclients)
 
   long max = (1l << (prec)) - 1;
 
+  // Init pointers
+  for_server_a = (unsigned char**) malloc( nclients * sizeof(unsigned char* ) );
+  for_server_b = (unsigned char**) malloc( nclients * sizeof(unsigned char* ) );
+  unsigned int* aLen;
+  unsigned int* bLen;
+  aLen = (unsigned int*) malloc( nclients * sizeof(unsigned int ) );
+  bLen = (unsigned int*) malloc( nclients * sizeof(unsigned int ) );
+
   struct timeval main_start, main_end;
   struct timeval start, end;
   gettimeofday(&main_start, NULL);
 
   double encode_time = 0;
   // Generate client data packets.
+  gettimeofday(&start, NULL);
   for (int c = 0; c < nclients; c++) {
 
     // The client's data submission is an arbitrary boolean vector.
@@ -118,23 +127,23 @@ verify_full(int prec, int nclients)
     // I. CLIENT DATA SUBMISSION.
     //
     // Construct the client data packets.
-    unsigned int aLen, bLen;
-
-    gettimeofday(&start, NULL);
 
     P_CHECKC(PrioClient_encode_uint(
-      cfg, prec, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
+      cfg, prec, data_items, &for_server_a[c], &aLen[c], &for_server_b[c], &bLen[c]));
+  }
+  gettimeofday(&end, NULL);
 
-    gettimeofday(&end, NULL);
+  encode_time = (end.tv_sec - start.tv_sec)*1e6;
+  encode_time = (encode_time + (end.tv_usec - start.tv_usec))*1e-6;
 
-    double time_elapsed = (end.tv_sec - start.tv_sec)*1e6;
-    time_elapsed = (time_elapsed + (end.tv_usec - start.tv_usec))*1e-6;
-    encode_time += time_elapsed;
-
+  for(int c = 0; c < nclients; c++){
     //send for server_b to server1
 
-    send_packet_data(serverfd,for_server_b,bLen);
-    printf("Processing input %d\n", c);
+    send_packet_data(serverfd,for_server_b[c],bLen[c]);
+    // printf("Processing input %d\n", c);
+  }
+
+  for(int c = 0; c < nclients; c++){
 
     // The Prio servers A and B can come online later (e.g., at the end of
     // each day) to download the encrypted telemetry packets from the
@@ -163,7 +172,7 @@ verify_full(int prec, int nclients)
     // from its peer.
 
     // Set up a Prio verifier object.
-    P_CHECKC(PrioVerifier_set_data(vA, for_server_a, aLen)); 
+    P_CHECKC(PrioVerifier_set_data(vA, for_server_a[c], aLen[c])); 
 
     // Both servers produce a packet1. Server A sends p1A to Server B
     // and vice versa.
@@ -190,10 +199,10 @@ verify_full(int prec, int nclients)
     // statistic counter for both servers.
     P_CHECKC(PrioServer_aggregate(sA, vA));
 
-    free(for_server_a);
-    free(for_server_b);
-    for_server_a = NULL;
-    for_server_b = NULL;
+    free(for_server_a[c]);
+    free(for_server_b[c]);
+    // for_server_a = NULL;
+    // for_server_b = NULL;
 
     
     // The servers repeat the steps above for each client submission.
@@ -222,7 +231,7 @@ verify_full(int prec, int nclients)
 
 
   printf("Time to process : %12.4lf\n",
-          time_taken-encode_time);
+          time_taken);
   printf("Time to encode : %12.4lf\n",
           encode_time);
 

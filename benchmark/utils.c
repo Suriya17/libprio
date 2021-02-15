@@ -1,4 +1,4 @@
-#include "util.h"
+#include "utils.h"
 
 
 #include <netinet/in.h>
@@ -13,8 +13,8 @@
 // #define SERVER0_IP "127.0.0.1"
 // #define SERVER1_IP "127.0.0.1"
 
-#define SERVER0_IP "100.26.135.121"
-#define SERVER1_IP "3.236.209.253"
+// #define SERVER0_IP "100.26.135.121"
+// #define SERVER1_IP "3.236.209.253"
 
 void error_exit(const char* const msg) {
     perror(msg);

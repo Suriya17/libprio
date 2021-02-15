@@ -27,8 +27,8 @@ verify_full(int prec, int nclients)
   PrioTotalShare tA = NULL;
   PrioTotalShare tB = NULL;
 
-  unsigned char* for_server_a = NULL;
-  unsigned char* for_server_b = NULL;
+  unsigned char** for_server_a = NULL;
+  unsigned char** for_server_b = NULL;
 
   const unsigned char* batch_id = (unsigned char*)"prio_batch_2018-04-17";
   const unsigned int batch_id_len = strlen((char*)batch_id);
@@ -93,6 +93,11 @@ verify_full(int prec, int nclients)
   P_CHECKA(p2A = PrioPacketVerify2_new());
   P_CHECKA(p2B = PrioPacketVerify2_new());
 
+  // Init pointers
+  for_server_b = (unsigned char**) malloc( nclients * sizeof(unsigned char* ) );
+  unsigned int* bLen;
+  bLen = (unsigned int*) malloc( nclients * sizeof(unsigned int ) );
+
 //   long max = (1l << (prec)) - 1;
   // Generate client data packets.
   for (int c = 0; c < nclients; c++) {
@@ -102,14 +107,16 @@ verify_full(int prec, int nclients)
     // I. CLIENT DATA SUBMISSION.
     //
     // Construct the client data packets.
-    unsigned int bLen;
     // P_CHECKC(PrioClient_encode(
     //   cfg, data_items, &for_server_a, &aLen, &for_server_b, &bLen));
 
-    recv_packet_data(serverfd,&for_server_b,&bLen);
+    recv_packet_data(serverfd,&for_server_b[c],&bLen[c]);
+  }
+  
+  for(int c = 0; c < nclients; c++){
 
-    if(c == 0)
-        printf("Processing input %d, size : %d \n", c, bLen);
+    // if(c == 0)
+    //     printf("Processing input %d, size : %d \n", c, bLen);
 
     // The Prio servers A and B can come online later (e.g., at the end of
     // each day) to download the encrypted telemetry packets from the
@@ -138,7 +145,7 @@ verify_full(int prec, int nclients)
     // from its peer.
 
     // Set up a Prio verifier object.
-    P_CHECKC(PrioVerifier_set_data(vB, for_server_b, bLen));
+    P_CHECKC(PrioVerifier_set_data(vB, for_server_b[c], bLen[c]));
 
     // Both servers produce a packet1. Server A sends p1A to Server B
     // and vice versa.
@@ -164,10 +171,10 @@ verify_full(int prec, int nclients)
     // statistic counter for both servers.
     P_CHECKC(PrioServer_aggregate(sB, vB));
 
-    free(for_server_a);
-    free(for_server_b);
-    for_server_a = NULL;
-    for_server_b = NULL;
+    // free(for_server_a[c]);
+    free(for_server_b[c]);
+    // for_server_a = NULL;
+    // for_server_b = NULL;
 
     // The servers repeat the steps above for each client submission.
 
