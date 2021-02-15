@@ -1,8 +1,8 @@
-#define SERVER0_IP "127.0.0.1"
-#define SERVER1_IP "127.0.0.1"
+// #define SERVER0_IP "127.0.0.1"
+// #define SERVER1_IP "127.0.0.1"
 
-// #define SERVER0_IP "3.238.241.6"
-// #define SERVER1_IP "3.234.221.79"
+#define SERVER0_IP "3.238.241.6"
+#define SERVER1_IP "3.234.221.79"
 
 #include <mprio.h>
 #include <mpi.h>
