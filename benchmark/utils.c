@@ -88,19 +88,19 @@ int recv_int(const int sockfd) {
 
 void recv_char_array(const int sockfd, unsigned char* data, const size_t len){
     // printf("Receiving char array :  ");
-    for(size_t i = 0; i < len; i++){
-        read_in(sockfd,data+i,sizeof(char));
+    // for(size_t i = 0; i < len; i++){
+        read_in(sockfd,data,len*sizeof(char));
         // printf("%d",data[i]);
-    }
+    // }
     // printf("\n");
 }
 
 void send_char_array(const int sockfd, unsigned char* data, const size_t len){
     // printf("Sending char array :  ");
-    for(size_t i = 0; i < len; i++){
-        send_out(sockfd,data+i,sizeof(char));
+    // for(size_t i = 0; i < len; i++){
+        send_out(sockfd,data,len*sizeof(char));
         // printf("%d",data[i]);
-    }
+    // }
     // printf("\n");
 }
 
