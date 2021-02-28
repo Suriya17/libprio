@@ -1,8 +1,10 @@
 #include <mprio.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <sys/time.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "utils.h"
@@ -20,19 +22,26 @@ verify_full(int nclients)
   PrioConfig cfg = NULL;
   PrioServer sA = NULL;
   PrioServer sB = NULL;
-  PrioVerifier vA = NULL;
+  PrioVerifier* vA = malloc(nclients * sizeof(PrioVerifier));
   // PrioVerifier vB = NULL;
-  PrioPacketVerify1 p1A = NULL;
-  PrioPacketVerify1 p1B = NULL;
-  PrioPacketVerify2 p2A = NULL;
-  PrioPacketVerify2 p2B = NULL;
+  PrioPacketVerify1* p1A = malloc(nclients * sizeof(PrioPacketVerify1));
+  PrioPacketVerify1* p1B = malloc(nclients * sizeof(PrioPacketVerify1));
+  PrioPacketVerify2* p2A = malloc(nclients * sizeof(PrioPacketVerify2));
+  PrioPacketVerify2* p2B = malloc(nclients * sizeof(PrioPacketVerify2));
+  for (int c = 0; c < nclients; c++) {
+    vA[c] = NULL;
+    p1A[c] = NULL;
+    p1B[c] = NULL;
+    p2A[c] = NULL;
+    p2B[c] = NULL;
+  }
   PrioTotalShare tA = NULL;
   PrioTotalShare tB = NULL;
 
   unsigned char** for_server_a = NULL;
   unsigned char** for_server_b = NULL;
 
-  const unsigned char* batch_id = (unsigned char*)"prio_batch_2018-04-17";
+  const unsigned char* batch_id = (unsigned char*)"prio_batch_2020-02-28";
   const unsigned int batch_id_len = strlen((char*)batch_id);
 
   unsigned long long* output = NULL;
@@ -88,17 +97,21 @@ verify_full(int nclients)
   P_CHECKA(sA = PrioServer_new(cfg, PRIO_SERVER_A, skA, server_secret));
 
   // Initialize empty verifier objects
-  P_CHECKA(vA = PrioVerifier_new(sA));
+  for (int c = 0; c < nclients; c++) {
+    P_CHECKA(vA[c] = PrioVerifier_new(sA));
+  }
 
   // Initialize shares of final aggregate statistics
   P_CHECKA(tA = PrioTotalShare_new());
   P_CHECKA(tB = PrioTotalShare_new());
 
   // Initialize shares of verification packets
-  P_CHECKA(p1A = PrioPacketVerify1_new());
-  P_CHECKA(p1B = PrioPacketVerify1_new());
-  P_CHECKA(p2A = PrioPacketVerify2_new());
-  P_CHECKA(p2B = PrioPacketVerify2_new());
+  for (int c = 0; c < nclients; c++) {
+    P_CHECKA(p1A[c] = PrioPacketVerify1_new());
+    P_CHECKA(p1B[c] = PrioPacketVerify1_new());
+    P_CHECKA(p2A[c] = PrioPacketVerify2_new());
+    P_CHECKA(p2B[c] = PrioPacketVerify2_new());
+  }
 
   // Init pointers
   for_server_a = (unsigned char**) malloc( nclients * sizeof(unsigned char* ) );
@@ -110,6 +123,7 @@ verify_full(int nclients)
 
   struct timeval main_start, main_end;
   struct timeval start, end;
+  struct timeval t0, t1, t2, t3, t4;
   
 
   double encode_time = 0;
@@ -128,10 +142,7 @@ verify_full(int nclients)
     // I. CLIENT DATA SUBMISSION.
     //
     // Construct the client data packets.
-    
 
-   
-    
     P_CHECKC(PrioClient_encode(
       cfg, data_items, &(for_server_a[c]), &(aLen[c]), &(for_server_b[c]), &(bLen[c])));
     
@@ -145,9 +156,11 @@ verify_full(int nclients)
   encode_time = (end.tv_sec - start.tv_sec)*1e6;
   encode_time = (encode_time + (end.tv_usec - start.tv_usec))*1e-6;
 
+  int cli_bytes = 0;
   for (int c = 0; c < nclients; c++) {
-    send_packet_data(serverfd,for_server_b[c],bLen[c]);
+    cli_bytes += send_packet_data(serverfd,for_server_b[c],bLen[c]);
   }
+  printf("client packet bytes to server1: %d\n", cli_bytes);
     // The Prio servers A and B can come online later (e.g., at the end of
     // each day) to download the encrypted telemetry packets from the
     // telemetry server and run the protocol that computes the aggregate
@@ -174,34 +187,86 @@ verify_full(int nclients)
     // that each server is assured that every received message came
     // from its peer.
   gettimeofday(&main_start, NULL);
+
+  double cli_send_time = 0;
+  cli_send_time = (main_start.tv_sec - end.tv_sec) * 1e6;
+  cli_send_time = (cli_send_time + (main_start.tv_usec - end.tv_usec))*1e-6;
+
   for(int c = 0; c < nclients; c++) {
     // Set up a Prio verifier object.
-    P_CHECKC(PrioVerifier_set_data(vA, for_server_a[c], aLen[c])); 
+    P_CHECKC(PrioVerifier_set_data(vA[c], for_server_a[c], aLen[c])); 
+  }
+
+  gettimeofday(&t0, NULL);
+  double first_make_time = (t0.tv_sec - main_start.tv_sec) * 1e6;
+  first_make_time = (first_make_time + (t0.tv_usec - main_start.tv_usec))*1e-6;
+
+  for(int c = 0; c < nclients; c++) {
 
     // Both servers produce a packet1. Server A sends p1A to Server B
     // and vice versa.
-    P_CHECKC(PrioPacketVerify1_set_data(p1A, vA));
+    P_CHECKC(PrioPacketVerify1_set_data(p1A[c], vA[c]));
+  }
 
-    // ---> Exchange p1A, p1B
-    send_p1(serverfd, p1A);
-    recv_p1(serverfd, p1B);
+  gettimeofday(&t3, NULL);
+  double second_make_time = (t3.tv_sec - t0.tv_sec) * 1e6;
+  second_make_time = (second_make_time + (t3.tv_usec - t0.tv_usec))*1e-6;
 
+  pid_t pid = 0;
+  int status = 0;
+
+  pid = fork();
+  if (pid == 0) {
+    int sentbytes = 0;
+    for(int c = 0; c < nclients; c++) {
+      // ---> Exchange p1A, p1B
+      sentbytes += send_p1(serverfd, p1A[c]);
+    }
+    printf("send_p1 bytes: %d\n", sentbytes);
+    goto cleanup;
+  }
+
+  for(int c = 0; c < nclients; c++) {
+    recv_p1(serverfd, p1B[c]);
+  }
+  waitpid(pid, &status, 0);
+
+  gettimeofday(&t1, NULL);
+  double first_swap_time = (t1.tv_sec - t3.tv_sec) * 1e6;
+  first_swap_time = (first_swap_time + (t1.tv_usec - t3.tv_usec))*1e-6;
+
+  for(int c = 0; c < nclients; c++) {
     // Both servers produce a packet2. Server A sends p2A to Server B
     // and vice versa.
-    P_CHECKC(PrioPacketVerify2_set_data(p2A, vA, p1A, p1B));
+    P_CHECKC(PrioPacketVerify2_set_data(p2A[c], vA[c], p1A[c], p1B[c]));
+  }
 
-    send_p2(serverfd, p2A);
-    recv_p2(serverfd, p2B);
+  gettimeofday(&t4, NULL);
+  double third_make_time = (t4.tv_sec - t1.tv_sec) * 1e6;
+  third_make_time = (third_make_time + (t4.tv_usec - t1.tv_usec))*1e-6;
+
+  pid = fork();
+  if (pid == 0) {
+    int sentbytes = 0;
+    for(int c = 0; c < nclients; c++) {
+      sentbytes += send_p2(serverfd, p2A[c]);
+    }
+    printf("send_p2 bytes: %d\n", sentbytes);
+    goto cleanup;
+  }
+
+  for(int c = 0; c < nclients; c++) {
+    recv_p2(serverfd, p2B[c]);
 
     // Using p2A and p2B, the servers can determine whether the request
     // is valid. (In fact, only Server A needs to perform this
     // check, since Server A can just tell Server B whether the check
     // succeeded or failed.)
-    P_CHECKC(PrioVerifier_isValid(vA, p2A, p2B));
+    P_CHECKC(PrioVerifier_isValid(vA[c], p2A[c], p2B[c]));
 
     // If we get here, the client packet is valid, so add it to the aggregate
     // statistic counter for both servers.
-    P_CHECKC(PrioServer_aggregate(sA, vA));
+    P_CHECKC(PrioServer_aggregate(sA, vA[c]));
 
     free(for_server_a[c]);
     free(for_server_b[c]);
@@ -219,10 +284,16 @@ verify_full(int nclients)
     // Server B can send tB to Server A.
     
   }
-  
+  waitpid(pid, &status, 0);
+
+  gettimeofday(&t2, NULL);
+  double second_swap_time = (t2.tv_sec - t4.tv_sec) * 1e6;
+  second_swap_time = (second_swap_time + (t2.tv_usec - t4.tv_usec))*1e-6;
+
   P_CHECKC(PrioTotalShare_set_data(tA, sA));
+
   
-  recv_tB(serverfd,tB,ndata);
+  recv_tB(serverfd, tB, ndata);
   // Once Server A has tA and tB, it can learn the aggregate statistics
   // in the clear.
   P_CHECKC(PrioTotalShare_final(cfg, output, tA, tB));
@@ -233,11 +304,19 @@ verify_full(int nclients)
   double time_taken = (main_end.tv_sec - main_start.tv_sec)*1e6;
   time_taken = (time_taken + (main_end.tv_usec - main_start.tv_usec))*1e-6;
 
+  double aggregate_time = (main_end.tv_sec - t2.tv_sec)*1e6;
+  aggregate_time = (aggregate_time + (main_end.tv_usec - t2.tv_usec))*1e-6;
 
-  printf("Time to process : %12.4lf\n",
-          time_taken);
-  printf("Time to encode : %12.4lf\n",
-          encode_time);
+
+  printf("Time to encode : \t%12.4lf\n", encode_time); // start to end
+  printf("Time to client send : \t%12.4lf\n", cli_send_time);  // end to main start
+  printf("Time to process : \t%12.4lf\n", time_taken);  // main start to main end
+  printf("Time to first make : \t%12.4lf\n", first_make_time);  // main start to t0
+  printf("Time to second make : \t%12.4lf\n", second_make_time);  // t0 to t3
+  printf("Time to first swap : \t%12.4lf\n", first_swap_time);  // t3 to t1
+  printf("Time to third make : \t%12.4lf\n", third_make_time);  // t1 to t4
+  printf("Time to second swap : \t%12.4lf\n", second_swap_time);  // t4 to t2
+  printf("Time to aggregate : \t%12.4lf\n", aggregate_time);  // t2 to main end
 
   // Now the output[i] contains a counter that indicates how many clients
   // submitted TRUE for data value i.  We print out this data.
@@ -262,13 +341,19 @@ cleanup:
   PrioTotalShare_clear(tA);
   PrioTotalShare_clear(tB);
 
-  PrioPacketVerify2_clear(p2A);
-  PrioPacketVerify2_clear(p2B);
+  for (int c = 0; c < nclients; c++) {
+    PrioPacketVerify2_clear(p2A[c]);
+    PrioPacketVerify2_clear(p2B[c]);
+    PrioPacketVerify1_clear(p1A[c]);
+    PrioPacketVerify1_clear(p1B[c]);
+    PrioVerifier_clear(vA[c]);
+  }
+  free(p2A);
+  free(p2B);
+  free(p1A);
+  free(p1B);
+  free(vA);
 
-  PrioPacketVerify1_clear(p1A);
-  PrioPacketVerify1_clear(p1B);
-
-  PrioVerifier_clear(vA);
   // PrioVerifier_clear(vB);
 
   PrioServer_clear(sA);

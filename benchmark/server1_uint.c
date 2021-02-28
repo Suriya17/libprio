@@ -1,6 +1,8 @@
 #include <mprio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "utils.h"
@@ -19,11 +21,18 @@ verify_full(int prec, int nclients)
   PrioServer sA = NULL;
   PrioServer sB = NULL;
   // PrioVerifier vA = NULL;
-  PrioVerifier vB = NULL;
-  PrioPacketVerify1 p1A = NULL;
-  PrioPacketVerify1 p1B = NULL;
-  PrioPacketVerify2 p2A = NULL;
-  PrioPacketVerify2 p2B = NULL;
+  PrioVerifier* vB = malloc(nclients * sizeof(PrioVerifier));
+  PrioPacketVerify1* p1A = malloc(nclients * sizeof(PrioPacketVerify1));
+  PrioPacketVerify1* p1B = malloc(nclients * sizeof(PrioPacketVerify1));
+  PrioPacketVerify2* p2A = malloc(nclients * sizeof(PrioPacketVerify2));
+  PrioPacketVerify2* p2B = malloc(nclients * sizeof(PrioPacketVerify2));
+  for (int c = 0; c < nclients; c++) {
+    vB[c] = NULL;
+    p1A[c] = NULL;
+    p1B[c] = NULL;
+    p2A[c] = NULL;
+    p2B[c] = NULL;
+  }
   PrioTotalShare tA = NULL;
   PrioTotalShare tB = NULL;
 
@@ -81,17 +90,21 @@ verify_full(int prec, int nclients)
   P_CHECKA(sB = PrioServer_new(cfg, PRIO_SERVER_B, skB, server_secret));
 
   // Initialize empty verifier objects
-  P_CHECKA(vB = PrioVerifier_new(sB));
+  for (int c = 0; c < nclients; c++) {
+    P_CHECKA(vB[c] = PrioVerifier_new(sB));
+  }
 
   // Initialize shares of final aggregate statistics
   P_CHECKA(tA = PrioTotalShare_new());
   P_CHECKA(tB = PrioTotalShare_new());
 
   // Initialize shares of verification packets
-  P_CHECKA(p1A = PrioPacketVerify1_new());
-  P_CHECKA(p1B = PrioPacketVerify1_new());
-  P_CHECKA(p2A = PrioPacketVerify2_new());
-  P_CHECKA(p2B = PrioPacketVerify2_new());
+  for (int c = 0; c < nclients; c++) {
+    P_CHECKA(p1A[c] = PrioPacketVerify1_new());
+    P_CHECKA(p1B[c] = PrioPacketVerify1_new());
+    P_CHECKA(p2A[c] = PrioPacketVerify2_new());
+    P_CHECKA(p2B[c] = PrioPacketVerify2_new());
+  }
 
   // Init pointers
   for_server_b = (unsigned char**) malloc( nclients * sizeof(unsigned char* ) );
@@ -145,31 +158,50 @@ verify_full(int prec, int nclients)
     // from its peer.
 
     // Set up a Prio verifier object.
-    P_CHECKC(PrioVerifier_set_data(vB, for_server_b[c], bLen[c]));
+    P_CHECKC(PrioVerifier_set_data(vB[c], for_server_b[c], bLen[c]));
 
     // Both servers produce a packet1. Server A sends p1A to Server B
     // and vice versa.
-    P_CHECKC(PrioPacketVerify1_set_data(p1B, vB));
-
-    recv_p1(serverfd,p1A);
-    send_p1(serverfd,p1B);
+    P_CHECKC(PrioPacketVerify1_set_data(p1B[c], vB[c]));
+  }
+  pid_t pid = 0;
+  int status = 0;
+  pid = fork();
+  if (pid == 0) {
+    for (int c = 0; c < nclients; c++) {
+      send_p1(serverfd, p1B[c]);
+    }
+    goto cleanup;
+  }
+  for (int c = 0; c < nclients; c++) {
+    recv_p1(serverfd, p1A[c]);
+  }
+  waitpid(pid, &status, 0);
+  for (int c = 0; c < nclients; c++) {
 
     // Both servers produce a packet2. Server A sends p2A to Server B
     // and vice versa.
-    P_CHECKC(PrioPacketVerify2_set_data(p2B, vB, p1A, p1B));
-
-    recv_p2(serverfd, p2A);
-    send_p2(serverfd, p2B);
+    P_CHECKC(PrioPacketVerify2_set_data(p2B[c], vB[c], p1A[c], p1B[c]));
+  }
+  pid = fork();
+  if (pid == 0) {
+    for (int c = 0; c < nclients; c++) {
+      send_p2(serverfd, p2B[c]);
+    }
+    goto cleanup;
+  }
+  for (int c = 0; c < nclients; c++) {
+    recv_p2(serverfd, p2A[c]);
 
     // Using p2A and p2B, the servers can determine whether the request
     // is valid. (In fact, only Server A needs to perform this
     // check, since Server A can just tell Server B whether the check
     // succeeded or failed.)
-    P_CHECKC(PrioVerifier_isValid(vB, p2A, p2B));
+    P_CHECKC(PrioVerifier_isValid(vB[c], p2A[c], p2B[c]));
 
     // If we get here, the client packet is valid, so add it to the aggregate
     // statistic counter for both servers.
-    P_CHECKC(PrioServer_aggregate(sB, vB));
+    P_CHECKC(PrioServer_aggregate(sB, vB[c]));
 
     // free(for_server_a[c]);
     free(for_server_b[c]);
@@ -195,6 +227,7 @@ verify_full(int prec, int nclients)
     // for (int i = 0; i < ndata; i++)
     //   printf("output[%d] = %llu\n", i, output[i]);
   }
+  waitpid(pid, &status, 0);
 
   P_CHECKC(PrioTotalShare_set_data_uint(tB, sB, prec));
 
@@ -218,14 +251,18 @@ cleanup:
   PrioTotalShare_clear(tA);
   PrioTotalShare_clear(tB);
 
-  PrioPacketVerify2_clear(p2A);
-  PrioPacketVerify2_clear(p2B);
-
-  PrioPacketVerify1_clear(p1A);
-  PrioPacketVerify1_clear(p1B);
-
-  // PrioVerifier_clear(vA);
-  PrioVerifier_clear(vB);
+  for (int c = 0; c < nclients; c++) {
+    PrioPacketVerify2_clear(p2A[c]);
+    PrioPacketVerify2_clear(p2B[c]);
+    PrioPacketVerify1_clear(p1A[c]);
+    PrioPacketVerify1_clear(p1B[c]);
+    PrioVerifier_clear(vB[c]);
+  }
+  free(p2A);
+  free(p2B);
+  free(p1A);
+  free(p1B);
+  free(vB);
 
   PrioServer_clear(sA);
   PrioServer_clear(sB);
