@@ -1,8 +1,8 @@
-// #define SERVER0_IP "127.0.0.1"
-// #define SERVER1_IP "127.0.0.1"
+#define SERVER0_IP "127.0.0.1"
+#define SERVER1_IP "127.0.0.1"
 
-#define SERVER0_IP "3.238.241.6"
-#define SERVER1_IP "3.234.221.79"
+// #define SERVER0_IP "3.238.241.6"
+// #define SERVER1_IP "3.234.221.79"
 
 #include <mprio.h>
 #include <mpi.h>
@@ -22,22 +22,22 @@ void server0_listen(int* sockfd, int  *newsockfd, const int port, const int reus
 void server1_connect(int* sockfd, const int port, const int reuse);
 
 int recv_in(const int sockfd, void* const buf, const size_t len);
-void recv_char_array(const int sockfd, unsigned char* data, const size_t len);
-void send_char_array(const int sockfd, unsigned char* data, const size_t len);
+int recv_char_array(const int sockfd, unsigned char* data, const size_t len);
+int send_char_array(const int sockfd, unsigned char* data, const size_t len);
 size_t read_in(const int sockfd, void* buf, const size_t len);
 size_t send_out(const int sockfd, const void* buf, const size_t len);
-void send_packet_data(const int sockfd, unsigned char* data, const unsigned int len);
-void recv_packet_data(const int sockfd, unsigned char** data, unsigned int* len);
-void send_mp(const int sockfd, mp_int *mp);
-void recv_mp(const int sockfd, mp_int *mp);
+int send_packet_data(const int sockfd, unsigned char* data, const unsigned int len);
+int recv_packet_data(const int sockfd, unsigned char** data, unsigned int* len);
+int send_mp(const int sockfd, mp_int *mp);
+int recv_mp(const int sockfd, mp_int *mp);
 
-void send_p1(const int sockfd, PrioPacketVerify1 p1);
-void recv_p1(const int sockfd, PrioPacketVerify1 p1);
+int send_p1(const int sockfd, PrioPacketVerify1 p1);
+int recv_p1(const int sockfd, PrioPacketVerify1 p1);
 
-void send_p2(const int sockfd, PrioPacketVerify2 p2);
-void recv_p2(const int sockfd, PrioPacketVerify2 p2);
+int send_p2(const int sockfd, PrioPacketVerify2 p2);
+int recv_p2(const int sockfd, PrioPacketVerify2 p2);
 
-void send_tB(const int sockfd, PrioTotalShare t);
-void recv_tB(const int sockfd, PrioTotalShare t, const int ndata);
+int send_tB(const int sockfd, PrioTotalShare t);
+int recv_tB(const int sockfd, PrioTotalShare t, const int ndata);
 // int send_int(const int sockfd, const int x);
 // int recv_int(const int sockfd, int& x);

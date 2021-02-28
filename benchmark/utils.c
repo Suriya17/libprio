@@ -86,34 +86,39 @@ int recv_int(const int sockfd) {
     return x;
 }
 
-void recv_char_array(const int sockfd, unsigned char* data, const size_t len){
+int recv_char_array(const int sockfd, unsigned char* data, const size_t len){
     // printf("Receiving char array :  ");
     // for(size_t i = 0; i < len; i++){
-        read_in(sockfd,data,len*sizeof(char));
+    return read_in(sockfd,data,len*sizeof(char));
         // printf("%d",data[i]);
     // }
     // printf("\n");
 }
 
-void send_char_array(const int sockfd, unsigned char* data, const size_t len){
+int send_char_array(const int sockfd, unsigned char* data, const size_t len){
     // printf("Sending char array :  ");
     // for(size_t i = 0; i < len; i++){
-        send_out(sockfd,data,len*sizeof(char));
+    return send_out(sockfd,data,len*sizeof(char));
         // printf("%d",data[i]);
     // }
     // printf("\n");
 }
 
-void send_packet_data(const int sockfd, unsigned char* data, const unsigned int len){
-    send_int(sockfd,len);
-    send_char_array(sockfd, data, len);
+int send_packet_data(const int sockfd, unsigned char* data, const unsigned int len){
+    int total = 0;
+    total += send_int(sockfd,len);
+    total += send_char_array(sockfd, data, len);
+    return total;
 }
 
-void recv_packet_data(const int sockfd, unsigned char** data, unsigned int* len){
-    *len = recv_int(sockfd);
+int recv_packet_data(const int sockfd, unsigned char** data, unsigned int* len){
+    int total = 0;
+    total = recv_int(sockfd);
+    *len = total;
     unsigned char *recv_data = (unsigned char *) malloc(*len * sizeof(char));
-    recv_char_array(sockfd,recv_data,*len);
+    total += recv_char_array(sockfd,recv_data,*len);
     *data = recv_data;
+    return total;
 }
 
 // void recv_pk(const int sockfd, PublicKey* pk){
@@ -173,54 +178,66 @@ void server1_connect(int* sockfd, const int port, const int reuse ) {
     printf( "  Connected\n");
 }
 
-void send_mp(const int sockfd, mp_int *mp){
+int send_mp(const int sockfd, mp_int *mp){
+    int total = 0;
     int len = mp_raw_size(mp);
     // printf("mp_int size : %d \n", len);
     char *str = (char *) malloc(len * sizeof(char));
     mp_toraw(mp,str);
     // printf("Sending mp_int : %s \n", str);
-    send_int(sockfd,len);
-    send_char_array(sockfd,(unsigned char *)str, len);
+    total += send_int(sockfd,len);
+    total += send_char_array(sockfd,(unsigned char *)str, len);
     free(str);
+    return total;
 }
 
-void recv_mp(const int sockfd, mp_int *mp){
+int recv_mp(const int sockfd, mp_int *mp){
+    int total = 0;
     int len = recv_int(sockfd);
     char *str = (char *) malloc(len * sizeof(char));
 
-    recv_char_array(sockfd,(unsigned char *)str, len);
-    mp_read_raw(mp,str, len);
+    total += recv_char_array(sockfd,(unsigned char *)str, len);
+    total += mp_read_raw(mp,str, len);
     free(str);
+    return total;
 }
 
-void send_p1(const int sockfd, PrioPacketVerify1 p1) {
-    send_mp(sockfd, &(p1->share_d));
-    send_mp(sockfd, &(p1->share_e));
+int send_p1(const int sockfd, PrioPacketVerify1 p1) {
+    int total = 0;
+    total += send_mp(sockfd, &(p1->share_d));
+    total += send_mp(sockfd, &(p1->share_e));
+    return total;
 }
 
-void recv_p1(const int sockfd, PrioPacketVerify1 p1){
-    recv_mp(sockfd, &(p1->share_d));
-    recv_mp(sockfd, &(p1->share_e));
+int recv_p1(const int sockfd, PrioPacketVerify1 p1){
+    int total = 0;
+    total += recv_mp(sockfd, &(p1->share_d));
+    total += recv_mp(sockfd, &(p1->share_e));
+    return total;
 }
 
-void send_p2(const int sockfd, PrioPacketVerify2 p2) {
-    send_mp(sockfd, &(p2->share_out));
+int send_p2(const int sockfd, PrioPacketVerify2 p2) {
+    return send_mp(sockfd, &(p2->share_out));
 }
 
-void recv_p2(const int sockfd, PrioPacketVerify2 p2) {
-    recv_mp(sockfd, &(p2->share_out));
+int recv_p2(const int sockfd, PrioPacketVerify2 p2) {
+    return recv_mp(sockfd, &(p2->share_out));
 }
 
-void send_tB(const int sockfd, PrioTotalShare t){
+int send_tB(const int sockfd, PrioTotalShare t){
+    int total = 0;
     for(int i = 0; i < t->data_shares->len; i++)
-        send_mp(sockfd,&(t->data_shares->data[i]));
+        total += send_mp(sockfd,&(t->data_shares->data[i]));
+    return total;
 }
 
-void recv_tB(const int sockfd, PrioTotalShare t, const int ndata){
+int recv_tB(const int sockfd, PrioTotalShare t, const int ndata){
+    int total = 0;
     t->idx = PRIO_SERVER_B;
     MPArray_resize(t->data_shares, ndata);
 
     for(int i = 0; i < ndata; i++){
-        recv_mp(sockfd,&(t->data_shares->data[i]));
+        total += recv_mp(sockfd,&(t->data_shares->data[i]));
     }
+    return total;
 }
