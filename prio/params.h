@@ -10,13 +10,17 @@
 #define __PARAMS_H__
 
 // A prime modulus p.
-static const char Modulus[] = "8000000000000000080001";
-
 // A generator g of a subgroup of Z*_p.
-static const char Generator[] = "2597c14f48d5b65ed8dcca";
-
 // The generator g generates a subgroup of
 // order 2^Generator2Order in Z*_p.
+
+static const char Modulus[] = "800006880001";
+static const char Generator[] = "3503101C8855";
 static const int Generator2Order = 19;
+
+// static const char Modulus[] = "8000000000000000080001";
+// static const char Generator[] = "2597c14f48d5b65ed8dcca";
+// static const int Generator2Order = 19;
+
 
 #endif /* __PARAMS_H__ */
